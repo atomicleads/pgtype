@@ -36,6 +36,8 @@ func (dst *Interval) Set(src interface{}) error {
 		value2 := value.Get()
 		if value2 != value {
 			return dst.Set(value2)
+		} else {
+			return nil
 		}
 	}
 
