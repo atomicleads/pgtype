@@ -385,6 +385,7 @@ func TestNumericEncodeDecodeBinary(t *testing.T) {
 		123,
 		0.000012345,
 		1.00002345,
+		50.000000,
 		math.NaN(),
 		float32(math.NaN()),
 		math.Inf(1),
@@ -420,6 +421,50 @@ func TestNumericEncodeDecodeBinary(t *testing.T) {
 
 		if text0 != text1 {
 			t.Errorf("%d: expected %v to equal to %v, but doesn't", i, text0, text1)
+		}
+	}
+}
+
+// https://github.com/jackc/pgtype/issues/210
+func TestNumericSmallNegativeValues(t *testing.T) {
+	n := pgtype.Numeric{}
+	err := n.Set("-0.000123")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	s := ""
+	err = n.AssignTo(&s)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if s != "-0.000123" {
+		t.Fatalf("expected %s, got %s", "-0.000123", s)
+	}
+}
+
+// https://github.com/jackc/pgtype/issues/210
+func TestNumericFloat64Exhaustive(t *testing.T) {
+	for exp := -10; exp <= 10; exp++ {
+		for i := -100; i < 100; i++ {
+			n := pgtype.Numeric{
+				Int:    big.NewInt(int64(i)),
+				Exp:    int32(exp),
+				Status: pgtype.Present,
+			}
+
+			var got float64
+			err := n.AssignTo(&got)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			want := float64(i) * math.Pow10(exp)
+			delta := math.Abs(want * 0.0000000001)
+			if math.Abs(got-want) > delta {
+				t.Fatalf("expected %f from %de%d, got %f", want, i, exp, got)
+			}
 		}
 	}
 }
